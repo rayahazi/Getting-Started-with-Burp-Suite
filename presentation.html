@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>צעדים ראשונים עם Burp Suite - כנס Hackeriot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Source+Code+Pro:wght@400;700&family=Assistant:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Assistant', 'Source Code Pro', monospace;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            --matrix-green: #00ff41;
+            --scanline-color: rgba(0, 255, 65, 0.1);
+        }
+
+        /* Animated grid background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: 
+                linear-gradient(to right, rgba(0, 255, 65, 0.1) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0, 255, 65, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -1;
+            animation: bg-scroll 20s linear infinite;
+        }
+
+        @keyframes bg-scroll {
+            from { background-position: 0 0; }
+            to { background-position: -400px -400px; }
+        }
+
+        .slide {
+            display: none;
+            min-height: 100vh;
+            width: 100%;
+            padding: 3rem 5%; /* Padding for content inside the slide */
+        }
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .slide-title {
+            font-family: 'Roboto Mono', monospace;
+            color: var(--matrix-green);
+            text-shadow: 0 0 8px var(--matrix-green);
+            border-bottom: 2px solid var(--matrix-green);
+            padding-bottom: 0.5rem;
+            text-align: center;
+        }
+        ul li {
+            position: relative;
+            padding-right: 25px; 
+            margin-bottom: 0.75rem;
+        }
+        ul li::before {
+            content: '<<'; 
+            position: absolute;
+            right: 0; 
+            color: var(--matrix-green);
+        }
+        /* Sleeker nav buttons */
+        .nav-button {
+            position: fixed;
+            bottom: 2rem;
+            background-color: transparent;
+            color: var(--matrix-green);
+            border: 1px solid var(--matrix-green);
+            padding: 0.5rem 1rem;
+            font-family: 'Roboto Mono', monospace;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            opacity: 0.7;
+        }
+        .nav-button:hover {
+            background-color: var(--matrix-green);
+            color: #0d1117;
+            opacity: 1;
+            box-shadow: 0 0 10px var(--matrix-green);
+        }
+        #prevBtn { right: 2rem; } 
+        #nextBtn { left: 2rem; } 
+        .slide-counter {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--matrix-green);
+            font-size: 1.2rem;
+            font-family: 'Roboto Mono', monospace;
+            opacity: 0.6;
+        }
+        img.slide-image {
+            max-width: 90%;
+            max-height: 70vh;
+            border: 2px solid var(--matrix-green);
+            margin-top: 1rem;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.4);
+            object-fit: contain;
+            background-color: rgba(13, 17, 23, 0.8);
+        }
+        code {
+            background-color: #161b22;
+            padding: 0.2rem 0.4rem;
+            border-radius: 6px;
+            color: #ff7b72;
+            direction: ltr;
+            display: inline-block;
+        }
+         pre {
+            direction: ltr;
+            text-align: left;
+        }
+        .explanation {
+            font-size: 0.9rem;
+            color: #9ca3af; /* Gray-400 */
+            margin-top: 2px;
+            font-style: italic;
+        }
+        .command-explanation {
+             font-family: 'Assistant', sans-serif;
+             font-style: normal;
+             color: #9ca3af;
+             font-size: 0.85rem;
+             margin-top: -2px;
+             margin-bottom: 8px;
+             direction: rtl;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Slide 1: Title -->
+    <div class="slide active">
+        <div class="text-center">
+             <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image.png" alt="Burp Suite Logo" class="h-48 w-48 object-contain mx-auto mb-4">
+            <h1 class="text-7xl lg:text-8xl font-bold mb-6 slide-title">צעדים ראשונים עם Burp Suite</h1>
+            <p class="text-3xl mt-6">כנס Hackeriot 2025</p>
+            <p class="text-2xl mt-3">תל אביב, ישראל</p>
+        </div>
+    </div>
+
+    <!-- Slide 2: About Me -->
+    <div class="slide">
+        <div class="w-full max-w-5xl">
+            <h2 class="text-5xl font-bold mb-10 slide-title">מי אני</h2>
+            <div class="flex flex-col md:flex-row items-center justify-center gap-10 text-right">
+                <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-1.png" alt="Raya Klein" class="w-56 h-56 md:w-64 md:h-64 rounded-full object-cover border-2 border-green-400 shadow-lg shadow-green-400/20">
+                <div class="md:w-2/3">
+                    <p class="text-4xl mb-4 text-center md:text-right">רעיה קליין</p>
+                    <p class="text-2xl text-center md:text-right mb-6">בודקת חדירות, Shorsec</p>
+                    <h3 class="text-3xl mb-4" style="color:var(--matrix-green);">המסע שלי:</h3>
+                    <p class="text-xl leading-relaxed">התחלתי את דרכי באקדמיה, למדתי ואז הרציתי בתחומי סייבר ותכנות. אבל רציתי לעסוק במה שבאמת ריגש אותי - אבטחת מידע, אז עשיתי את המעבר ל"עולם האמיתי" והפכתי לבודקת חדירות.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 3: What is Burp Suite? -->
+    <div class="slide">
+        <div class="w-full max-w-4xl">
+            <h2 class="text-5xl font-bold mb-10 slide-title">מה זה Burp Suite?</h2>
+            <div class="text-right text-2xl">
+                <p class="mb-8 text-center">זה לא רק כלי, זו מעבדת אבטחת הרשת האישית שלכם.</p>
+                <ul class="space-y-4">
+                    <li>זו זכוכית מגדלת לכל תעבורת האינטרנט.</li>
+                    <li>זה האולר השוויצרי של כל האקר יישומי רשת.</li>
+                    <li>במילים פשוטות: הכלי נותן לכם שליטה מלאה על התקשורת בין הדפדפן לאינטרנט.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 4: Installations -->
+    <div class="slide">
+        <div class="w-full max-w-6xl">
+            <h2 class="text-5xl font-bold mb-10 slide-title">התקנות</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 w-full text-right">
+                <div class="p-6 border border-gray-600 rounded-lg bg-black bg-opacity-20 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-3xl font-bold mb-4" style="color:var(--matrix-green);">1. Burp Suite Community</h3>
+                        <p class="explanation mb-3">זוהי הגרסה החינמית של Burp Suite. היא מכילה את כל הכלים הבסיסיים שאנחנו צריכים לסדנה הזו.</p>
+                        <a href="https://portswigger.net/burp/releases" target="_blank" class="text-blue-400 hover:underline text-lg">portswigger.net/burp/releases</a>
+                    </div>
+                </div>
+                <div class="p-6 border border-gray-600 rounded-lg bg-black bg-opacity-20 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-3xl font-bold mb-4" style="color:var(--matrix-green);">2. OWASP Juice Shop</h3>
+                        <p class="explanation mb-3">זהו "חדר כושר" להאקרים - אתר אינטרנט שבנו אותו בכוונה עם חורי אבטחה, כדי שנוכל להתאמן עליו באופן חוקי ובטוח.</p>
+                        <p class="mb-2 text-lg"><strong>דרישות:</strong> Node.js, git</p>
+                    </div>
+                    <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-4.png" alt="Juice Shop Installation Steps" class="slide-image w-full mt-4">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 5: Setting a Proxy -->
+    <div class="slide">
+        <div class="w-full max-w-6xl">
+            <h2 class="text-5xl font-bold mb-8 slide-title">הגדרת פרוקסי (איך Burp עובד)</h2>
+             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center text-right">
+                <div>
+                    <h3 class="text-2xl mb-4" style="color:var(--matrix-green);">השיחה הרגילה (בלי Burp):</h3>
+                    <p class="text-lg">בדרך כלל, הדפדפן שלכם מנהל שיחה ישירה ופרטית עם שרת האתר, כמו שליחת מכתב בדואר ישירות לנמען.</p>
+                     <h3 class="text-2xl mt-6 mb-4" style="color:var(--matrix-green);">השיחה עם Burp (אדם באמצע):</h3>
+                    <p class="text-lg">כשאנחנו מגדירים את Burp כפרוקסי, אנחנו מכריחים את השיחה לעבור דרכו. זה כמו להגיד לדואר: "כל מכתב שאני שולח, תעביר קודם כל דרך חבר שלי (Burp) שיקרא אותו, ואולי ישנה אותו, לפני שהוא ממשיך לנמען המקורי."</p>
+                </div>
+             </div>
+             <div class="mt-8 text-right max-w-5xl w-full mx-auto">
+                <h3 class="text-2xl mb-4" style="color:var(--matrix-green);">אז איך עושים את זה בפועל?</h3>
+                <p class="text-lg">יש שתי דרכים עיקריות לגרום לדפדפן "לדבר" דרך Burp:</p>
+                <ul class="mt-4 text-lg space-y-3">
+                    <li><strong>הדרך למתקדמים:</strong> שימוש בדפדפן הרגיל שלכם (כמו כרום) יחד עם תוסף (FoxyProxy) והתקנת תעודת אבטחה מיוחדת של Burp.</li>
+                    <li><strong>הדרך הקלה (מומלץ לסדנה):</strong> שימוש בדפדפן המובנה של Burp, שמגיע כבר מוגדר ומוכן לעבודה בלחיצת כפתור.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 6: Proxy Config Part 1 -->
+    <div class="slide">
+        <div class="w-full max-w-7xl">
+            <h2 class="text-5xl font-bold mb-8 slide-title">1. תצורת פרוקסי בדפדפן רגיל</h2>
+            <div class="flex flex-col gap-12">
+                <!-- Item 1: FoxyProxy -->
+                <div class="flex flex-col gap-4 items-center">
+                    <div class="w-full text-center">
+                        <h3 class="text-2xl mb-2" style="color:var(--matrix-green);">שלב א': הגדרת FoxyProxy</h3>
+                        <p>התקינו את התוסף, פתחו את ההגדרות והוסיפו פרוקסי חדש עם הפרטים שבתמונה.</p>
+                    </div>
+                    <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-2.png" alt="FoxyProxy Setup" class="slide-image md:w-2/3">
+                </div>
+                <!-- Item 2: Listener -->
+                <div class="flex flex-col gap-4 items-center">
+                     <div class="w-full text-center">
+                        <h3 class="text-2xl mb-2" style="color:var(--matrix-green);">שלב ב': וידוא Listener ב-Burp</h3>
+                        <p>ודאו שבתוך Burp, תחת לשונית ה-Proxy -> Settings, ה-Listener מאזין על אותה כתובת ופורט.</p>
+                    </div>
+                    <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-3.png" alt="Burp Listener Setup" class="slide-image md:w-2/3">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 7: Proxy Config Part 2 -->
+    <div class="slide">
+        <div class="w-full max-w-7xl text-center">
+            <h2 class="text-5xl font-bold mb-8 slide-title">תצורת פרוקסי (המשך)</h2>
+             <div class="flex-1 text-center">
+                <h3 class="text-3xl mb-4" style="color:var(--matrix-green);">שלב ג': התקנת תעודת אבטחה</h3>
+                <p class="text-xl max-w-4xl mx-auto">כשהפרוקסי פועל, גלשו לכתובת <code>http://127.0.0.1:8080</code> והורידו את תעודת ה-CA. לאחר מכן, התקינו אותה בדפדפן תחת "Trusted Root Certification Authorities".</p>
+            </div>
+            <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-17.png" alt="Download CA Certificate" class="slide-image mx-auto mt-6">
+        </div>
+    </div>
+    
+    <!-- Slide 8: Burp's Browser -->
+    <div class="slide">
+        <div class="w-full max-w-6xl text-center">
+            <h2 class="text-5xl font-bold mb-8 slide-title">2. שימוש בדפדפן המובנה של Burp</h2>
+            <p class="text-2xl max-w-4xl mx-auto mb-6">הדפדפן המובנה מגיע מוגדר מראש. אין צורך להגדיר פרוקסי או תעודה.</p>
+            <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-15.png" alt="כפתור Open browser ב-Burp Suite" class="slide-image mx-auto">
+            <p class="text-xl mt-6">פשוט לחצו על "Open Browser" מלשונית ה-Proxy ואתם מוכנים.</p>
+        </div>
+    </div>
+    
+    <!-- Slide 9: Viewing Traffic -->
+    <div class="slide">
+        <div class="w-full max-w-6xl text-center">
+            <h2 class="text-5xl font-bold mb-8 slide-title">צפייה בתעבורה</h2>
+            <div class="text-2xl max-w-4xl mx-auto mb-6 space-y-4 text-left rtl:text-right">
+                <p>1. פתחו את הדפדפן של Burp ונווטו ל-Juice Shop (<code>localhost:3000</code>).</p>
+                <p>2. ב-Burp, עברו ללשונית <strong>Proxy -> HTTP history</strong>.</p>
+                <p class="explanation">HTTP history: יומן המכיל את כל בקשות הרשת שהדפדפן שלכם שלח.</p>
+                <p>3. לחצו על אזורים שונים באתר ה-Juice Shop וצפו בתעבורה המופיעה ב-Burp.</p>
+            </div>
+            <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-5.png" alt="לשונית HTTP history ב-Burp Suite המציגה בקשות ל-localhost" class="slide-image mx-auto">
+        </div>
+    </div>
+
+    <!-- Slide 10: How a Website Works -->
+    <div class="slide">
+        <div class="w-full max-w-7xl">
+            <h2 class="text-5xl font-bold mb-10 slide-title">איך אתר אינטרנט עובד</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 items-center w-full text-right">
+                <div class="text-xl space-y-4">
+                    <ul class="space-y-4">
+                        <li><strong>ממשק משתמש (חזית החנות):</strong> מה שרואים ולוחצים עליו.</li>
+                        <li><strong>שרת (המוח):</strong> המחשב שמריץ את האתר ומעבד את הבקשות שלכם.</li>
+                        <li><strong>מסד נתונים (הכספת):</strong> המקום בו מאוחסן כל המידע היקר, כמו שמות משתמשים וסיסמאות.</li>
+                    </ul>
+                    <p class="text-2xl mt-10 pt-4" style="color:var(--matrix-green);">המטרה שלנו: לעקוף את ממשק המשתמש כדי להשתלט על השרת ולפרוץ את הכספת.</p>
+                </div>
+                <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-16.png" alt="דיאגרמת ארכיטקטורת יישום רשת" class="slide-image">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 11: HTTP Methods -->
+    <div class="slide">
+        <div class="w-full max-w-7xl">
+            <h2 class="text-5xl font-bold mb-10 slide-title">מתודות בקשת HTTP</h2>
+            <p class="explanation text-center mb-4 text-lg">HTTP היא השפה שבה דפדפנים ושרתים "מדברים" זה עם זה.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 items-center w-full text-right">
+                <img src="https://cdn.hashnode.com/res/hashnode/image/upload/v1626698981577/Zr91IVRBb.png" alt="דיאגרמה המסבירה פעולות CRUD ומתודות HTTP מתאימות" class="slide-image">
+                <ul class="text-xl space-y-3">
+                    <li><strong>GET:</strong> לקרוא/לראות מידע (לדוגמה: טעינת פרופיל)</li>
+                    <li><strong>POST:</strong> ליצור מידע חדש (לדוגמה: הרשמה לאתר)</li>
+                    <li><strong>PUT:</strong> לעדכן מידע קיים (לדוגמה: שינוי תמונת פרופיל)</li>
+                    <li><strong>DELETE:</strong> למחוק מידע (לדוגמה: מחיקת תגובה)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 12: Hacker's Hit List -->
+    <div class="slide">
+        <div class="w-full max-w-7xl">
+            <h2 class="text-5xl font-bold mb-10 slide-title">רשימת המטרות של ההאקר</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 items-center w-full text-right">
+                <div class="text-xl space-y-3">
+                    <ul class="space-y-3">
+                        <li><strong>תוכנה לא מעודכנת:</strong> חפשו רכיבים ישנים עם חולשות ידועות.
+                            <p class="explanation">בדיוק כמו מנעול ישן שפורצים כבר למדו איך לפרוץ, תוכנה ישנה מכילה חולשות אבטחה שהאקרים מכירים. עדכון תוכנה הוא כמו החלפת המנעול הישן בחדש.</p>
+                        </li>
+                        <li><strong>קלט זדוני:</strong> נסו לשלוח פקודות לא צפויות דרך כל תיבת טקסט באתר.
+                            <p class="explanation">דמיינו מכונת שתייה שמצפה למספרים כדי לבחור חטיף. קלט זדוני הוא כמו להכניס קוד סודי שאומר למכונה "תוציאי את כל החטיפים בחינם".</p>
+                        </li>
+                        <li><strong>בקרת גישה שבורה:</strong> נסו לגשת למידע שלא מיועד לכם.
+                            <p class="explanation">במלון, כרטיס המפתח שלכם אמור לפתוח רק את החדר שלכם. אם הייתם יכולים לשנות את המספר על הכרטיס ולפתוח את חדר הבקרה הראשי, זו בקרת גישה שבורה.</p>
+                        </li>
+                        <li><strong>תוכן מוסתר:</strong> חפשו קבצים ותיקיות סודיים שהמפתחים השאירו בטעות.
+                            <p class="explanation">זה כמו למצוא פנקס רשימות נשכח של מהנדס בספרייה ציבורית. הוא עשוי להכיל סיסמאות או תוכניות שלא נועדו לעיניים של כולם.</p>
+                        </li>
+                    </ul>
+                     <p class="text-lg mt-4">באפליקציית ה-Juice Shop שלנו, אלו הן קטגוריות הפגיעויות הקיימות:</p>
+                </div>
+                <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-6.png" alt="תרשים עוגה של פגיעויות ב-OWASP Juice Shop" class="slide-image">
+            </div>
+        </div>
+    </div>
+    
+    <!-- NEW Slide 13: Intro to Tools -->
+    <div class="slide">
+        <div class="w-full max-w-6xl">
+            <h2 class="text-5xl font-bold mb-10 slide-title">הכלים המרכזיים שלנו למעבדה</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 text-right">
+                <div class="p-6 border border-gray-600 rounded-lg bg-black bg-opacity-20">
+                    <h3 class="text-3xl font-bold mb-4" style="color:var(--matrix-green);">Repeater (המשחזר)</h3>
+                    <p class="text-lg">כלי לעבודה ידנית ומדויקת.</p>
+                    <p class="explanation mt-2">דמיינו את ה-Repeater כמו עורך טקסט לבקשת רשת אחת. אתם יכולים לקחת בקשה, לשנות בה פרט קטן (למשל, מספר זיהוי של משתמש), ולשלוח אותה שוב ושוב כדי לראות איך השרת מגיב לשינויים.</p>
+                </div>
+                <div class="p-6 border border-gray-600 rounded-lg bg-black bg-opacity-20">
+                    <h3 class="text-3xl font-bold mb-4" style="color:var(--matrix-green);">Intruder (הפולש)</h3>
+                    <p class="text-lg">כלי לאוטומציה והתקפות כוחניות.</p>
+                    <p class="explanation mt-2">דמיינו את ה-Intruder כמו רובוט שמנסה אלפי מפתחות שונים על מנעול במהירות שיא. אנחנו נותנים לו רשימה של "מפתחות" (כמו סיסמאות או שמות קבצים), והוא מנסה את כולם עבורנו באופן אוטומטי.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 14: Directory Enumeration with Intruder - Setup -->
+    <div class="slide">
+        <div class="w-full max-w-7xl text-center">
+            <h2 class="text-5xl font-bold mb-8 slide-title">מעבדה 1: Directory Enumeration (שלב 1)</h2>
+            <div class="text-xl text-center max-w-4xl mx-auto mb-6">
+                <p class="text-2xl mb-4">המטרה: למצוא דפים וקבצים נסתרים באתר.</p>
+                <p class="text-xl mb-6">נשתמש ב-<strong>Intruder</strong> כדי לשלוח בקשות מרובות במהירות.</p>
+                <p class="text-2xl mb-4 font-bold" style="color:var(--matrix-green);">ההכנה:</p>
+                <p>אנחנו לוקחים בקשה רגילה לאתר, מסמנים את החלק שאנחנו רוצים לשנות (שם הקובץ בכתובת), ומורים ל-Intruder להחליף את החלק הזה בכל אחד מהפריטים ברשימת ה-Payloads שלנו (רשימת ה"מפתחות" שהכנו מראש).</p>
+            </div>
+            <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-8.png" alt="Burp Suite Intruder setup" class="slide-image mx-auto mt-4" style="max-height: 60vh;">
+        </div>
+    </div>
+
+    <!-- Slide 15: Directory Enumeration with Intruder - Results -->
+    <div class="slide">
+        <div class="w-full max-w-7xl text-center">
+            <h2 class="text-5xl font-bold mb-8 slide-title">מעבדה 1: Directory Enumeration (שלב 2)</h2>
+            <p class="text-2xl mb-4 font-bold" style="color:var(--matrix-green);">התוצאות:</p>
+            <p class="text-xl text-center max-w-4xl mx-auto mb-6">לאחר הרצת ההתקפה, אנו בוחנים את התוצאות. בקשות שחזרו עם קוד סטטוס <strong>200</strong> (שמשמעותו "הצלחה") מצביעות על כך שמצאנו קובץ או תיקייה קיימים!</p>
+            <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-7.png" alt="Burp Suite Intruder results" class="slide-image mx-auto" style="max-height: 70vh;">
+        </div>
+    </div>
+    
+    <!-- NEW Slide 16: Advanced Task -->
+    <div class="slide">
+         <div class="w-full max-w-7xl text-center">
+            <h2 class="text-5xl font-bold mb-8 slide-title">משימה למתקדמים: Brute Force</h2>
+            <div class="text-xl text-center max-w-4xl mx-auto mb-6 p-6 border border-dashed border-yellow-400 rounded-lg bg-yellow-900 bg-opacity-20">
+                 <h3 class="text-2xl font-bold text-yellow-300">אתגר: לפרוץ לחשבון המנהל</h3>
+                 <p class="text-lg mt-4">כעת, כשאתם מבינים איך Intruder עובד, נסו להשתמש בו כדי לבצע מתקפת <strong>Brute Force</strong> על טופס ההתחברות.</p>
+                 <p class="explanation mt-2">Brute Force: ניסיון שיטתי של כל הסיסמאות האפשריות עד שנמצאת הנכונה, כמו לנסות כל צירוף מספרים בכספת.</p>
+                 <p class="text-lg mt-4">המטרה: לנחש את הסיסמה של המשתמש <code>admin@juice-sh.op</code>. השתמשו ב-Intruder עם רשימת סיסמאות נפוצות.</p>
+                 <p class="text-lg mt-4">כדי להקל עליכם, רשימת סיסמאות לדוגמה זמינה במאגר ה-GitHub של הסדנה.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 17: Authorization Bypass with Repeater -->
+    <div class="slide">
+        <div class="w-full max-w-6xl text-center">
+            <h2 class="text-5xl font-bold mb-8 slide-title">מעבדה 2: Authorization Bypass</h2>
+            <p class="text-2xl mb-4">בואו נצפה בסל הקניות של מישהו אחר באמצעות <strong>Burp Repeater</strong>.</p>
+            <p class="text-xl mb-6">Repeater מאפשר לנו לערוך ולשלוח מחדש בקשות בודדות באופן ידני.</p>
+             <p class="text-2xl mb-4 font-bold" style="color:var(--matrix-green);">המשימה שלכם:</p>
+            <p class="text-xl text-left rtl:text-right max-w-4xl mx-auto mb-6">1. התחברו ל-Juice Shop וצפו בסל שלכם.<br/>2. מצאו את הבקשה בהיסטוריית ה-HTTP (למשל, <code>GET /rest/basket/1</code>).<br/>3. שלחו אותה ל-Repeater (Ctrl+R).<br/>4. שנו את מספר מזהה הסל (למשל, מ-1/ ל-2/) ובדקו אם אתם יכולים לראות סל של משתמש אחר.</p>
+            <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-10.png" alt="Burp Suite Repeater המציג בקשה שעברה שינוי" class="slide-image mx-auto">
+        </div>
+    </div>
+    
+    <!-- Slide 18: Authorization Bypass POST - Step 1 -->
+    <div class="slide">
+        <div class="w-full max-w-7xl text-center">
+            <h2 class="text-5xl font-bold mb-8 slide-title">מעבדה 3: Auth Bypass ב-POST (שלב 1)</h2>
+             <p class="text-2xl mb-4">המטרה: לפרסם ביקורת לקוח בשם משתמש אחר.</p>
+             <p class="text-2xl mb-4 font-bold" style="color:var(--matrix-green);">ההכנה:</p>
+             <p class="text-xl text-left rtl:text-right max-w-4xl mx-auto mb-6">1. מלאו את טופס המשוב באתר באופן רגיל.<br/>2. לפני השליחה, ודאו שב-Burp, בלשונית ה-Proxy -> Intercept, היירוט (Intercept) מופעל.<br/>3. שלחו את הטופס, והבקשה "תיתפס" ב-Burp.</p>
+            <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-13.png" alt="Customer Feedback Form" class="slide-image mx-auto" style="max-height: 70vh;">
+        </div>
+    </div>
+
+     <!-- Slide 19: Authorization Bypass POST - Step 2 -->
+    <div class="slide">
+        <div class="w-full max-w-7xl text-center">
+            <h2 class="text-5xl font-bold mb-8 slide-title">מעבדה 3: Auth Bypass ב-POST (שלב 2)</h2>
+             <p class="text-2xl mb-4 font-bold" style="color:var(--matrix-green);">הביצוע:</p>
+             <p class="text-xl text-left rtl:text-right max-w-4xl mx-auto mb-6">1. שלחו את הבקשה שתפסתם אל ה-<strong>Repeater</strong>.<br/>2. בגוף הבקשה, שנו את הערך של <code>UserId</code> למספר אחר (למשל, 1 עבור מנהל המערכת).<br/>3. שלחו את הבקשה ובדקו את התגובה. אם היא מוצלחת (201 Created), הצלחתם לפרסם בשם משתמש אחר!</p>
+            <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-14.png" alt="Repeater POST request modified" class="slide-image mx-auto" style="max-height: 70vh;">
+        </div>
+    </div>
+    
+    <!-- Slide 20: JWT Explanation -->
+    <div class="slide">
+        <div class="w-full max-w-6xl">
+            <h2 class="text-5xl font-bold mb-10 slide-title">הכנה למעבדה 4: JWT וחנות ה-BApp</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 text-right">
+                <div class="p-6 border border-gray-600 rounded-lg bg-black bg-opacity-20">
+                    <h3 class="text-3xl font-bold mb-4" style="color:var(--matrix-green);">מה זה JWT (JSON Web Token)?</h3>
+                    <p class="text-lg">דמיינו ש-JWT הוא כמו <strong>צמיד כניסה לפסטיבל</strong>.</p>
+                    <ul class="mt-4 space-y-2 text-lg">
+                        <li><strong>קניית כרטיס:</strong> כשאתם מתחברים לאתר, השרת נותן לכם "צמיד" (JWT) ייחודי.</li>
+                        <li><strong>מה רשום עליו?</strong> על הצמיד רשומים פרטים כמו מי אתם ומה מותר לכם לעשות. המידע גלוי, אבל אי אפשר לזייף אותו בזכות "סוגר" מיוחד - <strong>החתימה הדיגיטלית</strong>.</li>
+                        <li><strong>בדיקה בכניסה:</strong> בכל פעם שאתם ניגשים לעמוד חדש, השרת רק מסתכל על הצמיד כדי לוודא שאתם מורשים, בלי לבדוק אתכם מחדש.</li>
+                    </ul>
+                </div>
+                <div class="p-6 border border-gray-600 rounded-lg bg-black bg-opacity-20">
+                    <h3 class="text-3xl font-bold mb-4" style="color:var(--matrix-green);">מהי חנות ה-BApp?</h3>
+                    <p class="text-lg">חשבו על זה כמו <strong>חנות האפליקציות</strong> בטלפון שלכם, אבל עבור Burp Suite.</p>
+                    <p class="explanation mt-2">זוהי "חנות" מובנית בתוך Burp שבה אפשר למצוא ולהתקין תוספים שמוסיפים יכולות חדשות לתוכנה. במעבדה הבאה, נתקין משם תוסף בשם 'JWT Editor' שיעזור לנו לקרוא את תוכן ה"צמידים" האלו.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 21: JWT Hacking - Step 1 -->
+    <div class="slide">
+        <div class="w-full max-w-7xl text-center">
+            <h2 class="text-5xl font-bold mb-8 slide-title">מעבדה 4: ניתוח JWT (שלב 1)</h2>
+            <p class="text-2xl mb-4">נשתמש בתוסף שיעזור לנו לנתח "תעודות זהות" דיגיטליות (JWT).</p>
+             <p class="text-2xl mb-4 font-bold" style="color:var(--matrix-green);">ההכנה:</p>
+            <p class="text-xl mb-6 max-w-4xl mx-auto">בתוך Burp, עברו לחנות התוספים (BApp Store) והתקינו את התוסף 'JWT Editor'.</p>
+            <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-11.png" alt="JWT Editor BApp Store" class="slide-image mx-auto" style="max-height: 70vh;">
+        </div>
+    </div>
+
+    <!-- Slide 22: JWT Hacking - Step 2 -->
+    <div class="slide">
+        <div class="w-full max-w-7xl text-center">
+            <h2 class="text-5xl font-bold mb-8 slide-title">מעבדה 4: ניתוח JWT (שלב 2)</h2>
+             <p class="text-2xl mb-4 font-bold" style="color:var(--matrix-green);">הניתוח:</p>
+            <p class="text-xl mb-6 max-w-4xl mx-auto">לאחר ההתחברות לאתר, תפסו בקשה ושלחו אותה ל-Repeater. לשונית ה-'JSON Web Token' החדשה תציג לנו את תוכן "תעודת הזהות" בצורה קריאה. שימו לב, לפעמים ניתן למצוא בפנים מידע רגיש, כמו סיסמה מוצפנת, שאפשר לנסות לפצח.</p>
+            <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-12.png" alt="Decoded JWT in Repeater" class="slide-image mx-auto" style="max-height: 70vh;">
+        </div>
+    </div>
+    
+     <!-- NEW Slide 23: Password Cracking -->
+    <div class="slide">
+        <div class="w-full max-w-6xl text-center">
+            <h2 class="text-5xl font-bold mb-10 slide-title">מעבדה 4: פיצוח הסיסמה (שלב 3)</h2>
+            <div class="text-right text-xl max-w-4xl mx-auto">
+                <p class="mb-4">מצאנו את הסיסמה המוצפנת (Hash) בתוך ה-JWT. אבל מה זה אומר?</p>
+                <h3 class="text-2xl font-bold mb-2" style="color:var(--matrix-green);">מה זה Hash?</h3>
+                <p class="mb-6">חשבו על זה כמו להפוך פרה להמבורגר. קל להפוך את הפרה להמבורגר, אבל כמעט בלתי אפשרי להפוך את ההמבורגר בחזרה לפרה. באופן דומה, קל להפוך סיסמה ל-Hash, אבל אי אפשר "להפוך" את התהליך.</p>
+                <h3 class="text-2xl font-bold mb-2" style="color:var(--matrix-green);">אז איך מפצחים את זה?</h3>
+                <p class="mb-6">אנחנו לא הופכים את התהליך. במקום זאת, אנחנו לוקחים רשימה ענקית של סיסמאות נפוצות, הופכים כל אחת מהן ל-Hash בעצמנו, ומשווים ל-Hash שמצאנו. אם יש התאמה - מצאנו את הסיסמה המקורית!</p>
+                 <p class="text-2xl mb-4 font-bold" style="color:var(--matrix-green);">המשימה שלכם:</p>
+                <p>העתיקו את ה-Hash של הסיסמה מה-JWT. הדביקו אותו בכלי אונליין לפיצוח סיסמאות כמו <a href="https://crackstation.net/" target="_blank" class="text-blue-400 hover:underline">CrackStation.net</a>, ובדקו מה הסיסמה המקורית.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 24: Q&A and Links -->
+    <div class="slide">
+        <div class="w-full max-w-4xl text-center">
+            <h2 class="text-5xl font-bold mb-10 slide-title">שאלות ותשובות וקישורים שימושיים</h2>
+            <div class="text-right text-xl mx-auto">
+                <ul class="space-y-4 inline-block">
+                    <li><strong>האקדמיה של PortSwigger:</strong> <a href="https://portswigger.net/web-security" class="text-blue-400">portswigger.net/web-security</a>
+                        <p class="explanation">זוהי פלטפורמת הלימודים החינמית והאינטראקטיבית של החברה שיצרה את Burp Suite. זהו המקום הטוב ביותר ללמוד על חולשות אינטרנט באופן מעשי, עם מאות מעבדות המדמות תרחישים אמיתיים.</p>
+                    </li>
+                    <li class="pt-4"><strong>OWASP Top 10:</strong> <a href="https://owasp.org/www-project-top-ten/" class="text-blue-400">owasp.org/www-project-top-ten</a>
+                        <p class="explanation">רשימה מפורסמת של עשרת סיכוני האבטחה החמורים ביותר ביישומי רשת.</p>
+                    </li>
+                </ul>
+            </div>
+            <p class="text-4xl mt-16 mb-4" style="color:var(--matrix-green);">תודה רבה!</p>
+            <p class="text-xl mb-4">נשמח לקבל את המשוב שלכם על הסדנה.</p>
+            <img src="https://cdn.jsdelivr.net/gh/rayahazi/Getting-Started-with-Burp-Suite@main/screenshots/image-18.png" alt="קוד QR לטופס משוב" class="slide-image mx-auto" style="max-width: 200px;">
+        </div>
+    </div>
+
+
+    <!-- Navigation -->
+    <button id="prevBtn" class="nav-button">הקודם &gt;</button>
+    <button id="nextBtn" class="nav-button">&lt; הבא</button>
+    <div id="slideCounter" class="slide-counter"></div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const slideCounter = document.getElementById('slideCounter');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[n].classList.add('active');
+            slideCounter.textContent = `${n + 1} / ${slides.length}`;
+            
+            prevBtn.style.display = n === 0 ? 'none' : 'block';
+            nextBtn.style.display = n === slides.length - 1 ? 'none' : 'block';
+        }
+
+        function nextSlide() {
+            if (currentSlide < slides.length - 1) {
+                currentSlide++;
+                showSlide(currentSlide);
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                showSlide(currentSlide);
+            }
+        }
+
+        nextBtn.addEventListener('click', nextSlide); 
+        prevBtn.addEventListener('click', prevSlide); 
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') {
+                prevSlide(); 
+            } else if (e.key === 'ArrowLeft') {
+                nextSlide(); 
+            }
+        });
+
+        showSlide(currentSlide);
+    </script>
+
+</body>
+</html>
+
